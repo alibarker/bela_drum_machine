@@ -24,10 +24,15 @@
 /* Pin numbers */
 
 int buttonPin1 =  P8_07;
+int buttonPin2 =  P8_08;
+
+
 
 /* Global State Variables */
 
 int previousButton1State = 0;
+int previousButton2State = 0;
+
 
 /* Variables which are given to you: */
 
@@ -46,7 +51,11 @@ int gIsPlaying = 0;			/* Whether we should play or not. Implement this in Step 4
  * holding each read pointer, the other saying which buffer
  * each read pointer corresponds to.
  */
-int gReadPointer = 0;
+
+#define NUMBER_OF_READPOINTERS 16
+
+int gReadPointers[NUMBER_OF_READPOINTERS];
+int gDrumBufferForReadPointer[NUMBER_OF_READPOINTERS] = {-1};
 
 /* Patterns indicate which drum(s) should play on which beat.
  * Each element of gPatterns is an array, whose length is given
@@ -118,29 +127,40 @@ void render(BeagleRTContext *context, void *userData)
 		float output = 0.0;
 		// Check button 1 state and trigger if just pressed.
 		int button1State = digitalReadFrame(context, n, buttonPin1);
+		int button2State = digitalReadFrame(context, n, buttonPin2);
+
 		if (button1State == 1 && previousButton1State == 0)
 		{
-			gTriggerButton1 = 1;
-			gReadPointer = 0;
+			startPlayingDrum(0);
 		}
 		previousButton1State = button1State;
-
+		
+		if (button2State == 1 && previousButton2State == 0)
+		{
+			startPlayingDrum(1);
+		}
+		previousButton2State = button2State;
 
 		// If drum triggered read through samples and add to output buffer
-		if (gTriggerButton1)
+		
+		for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
 		{
-			output += gDrumSampleBuffers[0][gReadPointer];
-			gReadPointer++;
-
-			if (gReadPointer >= gDrumSampleBufferLengths[0])
+			if (gReadPointers[i] != -1)
 			{
-				gReadPointer = 0;
-				gTriggerButton1 = 0;
+				int buffer = gDrumBufferForReadPointer[i];
+				output += gDrumSampleBuffers[buffer][gReadPointers[i]];
+				gReadPointers[i]++;
 
+				if (gReadPointers[i] >= gDrumSampleBufferLengths[buffer])
+				{
+					gDrumBufferForReadPointer[i] = -1;
+				}
 			}
 		}
-
 		// Write to output buffers
+
+		output *= 0.25;
+
 		audioWriteFrame(context, n, 0, output);
 		audioWriteFrame(context, n, 1, output);
 
@@ -155,6 +175,19 @@ void render(BeagleRTContext *context, void *userData)
  */
 void startPlayingDrum(int drumIndex) {
 	/* TODO in Steps 3a and 3b */
+	// Find available readPointer
+	// set gDrumBufferForReadPointer
+	// Can return without changing if all are busy
+
+	for (int i = 0; i < 16; i++)
+	{
+		if (gDrumBufferForReadPointer[i] != -1)
+		{
+			gDrumBufferForReadPointer[i] = drumIndex;
+			gReadPointers[i] = 0;
+			break;
+		}
+	}
 }
 
 /* Start playing the next event in the pattern */
