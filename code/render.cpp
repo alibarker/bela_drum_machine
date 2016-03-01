@@ -228,8 +228,21 @@ void startPlayingDrum(int drumIndex) {
 void startNextEvent() {
 	// Trigger kick sound
 
-	startPlayingDrum(0);
+	int event = gPatterns[gCurrentPattern][gCurrentIndexInPattern];
 
+	for (int i = 0; i < NUMBER_OF_DRUMS; i++)
+	{
+		if (eventContainsDrum(event, i))
+		{
+			startPlayingDrum(i);
+		}
+	}
+
+	gCurrentIndexInPattern++;
+	if (gCurrentIndexInPattern >= gPatternLengths[gCurrentPattern])
+	{
+		gCurrentIndexInPattern = 0;
+	}
 }
 
 /* Returns whether the given event contains the given drum sound */
