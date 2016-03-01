@@ -25,12 +25,13 @@
 
 int buttonPin1 =  P8_07;
 int buttonPin2 =  P8_08;
+int potPin = 0;
 
 /* Global State Variables */
 
 int previousButton1State = 0;
 int previousButton2State = 0;
-
+int gSampleCount = 0;
 
 /* Variables which are given to you: */
 
@@ -53,7 +54,7 @@ int gIsPlaying = 0;			/* Whether we should play or not. Implement this in Step 4
 #define NUMBER_OF_READPOINTERS 16
 
 int gReadPointers[NUMBER_OF_READPOINTERS];
-int gDrumBufferForReadPointer[NUMBER_OF_READPOINTERS] = {-1};
+int gDrumBufferForReadPointer[NUMBER_OF_READPOINTERS];
 
 /* Patterns indicate which drum(s) should play on which beat.
  * Each element of gPatterns is an array, whose length is given
@@ -110,6 +111,11 @@ bool setup(BeagleRTContext *context, void *userData)
 	pinModeFrame(context, 0, buttonPin1, INPUT);
 	pinModeFrame(context, 0, buttonPin2, INPUT);
 
+	for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
+	{
+		gDrumBufferForReadPointer[i] = -1;
+	}
+
 	return true;
 }
 
@@ -124,28 +130,24 @@ void render(BeagleRTContext *context, void *userData)
 
 	for (int n = 0; n < context->digitalFrames; n++)
 	{
+		// initialize output
 		float output = 0.0;
-		// Check button 1 state and trigger if just pressed.
-		int button1State = digitalReadFrame(context, n, buttonPin1);
-		int button2State = digitalReadFrame(context, n, buttonPin2);
 
-		if (button1State == 1 && previousButton1State == 0)
+		// count samples and trigger event
+
+		if (gSampleCount >= gEventIntervalMilliseconds * 0.001 * context->audioSampleRate)
 		{
-			startPlayingDrum(0);
-		}
-		previousButton1State = button1State;
-		
-		if (button2State == 1 && previousButton2State == 0)
-		{
-			startPlayingDrum(1);
-		}
-		previousButton2State = button2State;
+			startNextEvent();
+			gSampleCount = 0;
+		}		
+		gSampleCount ++;
 
 		// If drum triggered read through samples and add to output buffer
 		
 		for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
 		{
 			int buffer = gDrumBufferForReadPointer[i];
+			// rt_printf("Buffer %d: %d\n", i, buffer);
 			if (buffer != -1)
 			{
 				output += gDrumSampleBuffers[buffer][gReadPointers[i]];
@@ -192,7 +194,10 @@ void startPlayingDrum(int drumIndex) {
 
 /* Start playing the next event in the pattern */
 void startNextEvent() {
-	/* TODO in Step 4 */
+	// Trigger kick sound
+
+	startPlayingDrum(0);
+
 }
 
 /* Returns whether the given event contains the given drum sound */
