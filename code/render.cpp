@@ -133,15 +133,30 @@ void render(BeagleRTContext *context, void *userData)
 		// initialize output
 		float output = 0.0;
 
+		// check button state and change gIsPlaying if just pressed
+		int button1State = digitalReadFrame(context, n, buttonPin1);
+		if (button1State == 1 && previousButton1State == 0)
+		{
+			if (gIsPlaying == 0) {
+				gIsPlaying = 1;
+				gSampleCount = 0;
+			} else {
+				gIsPlaying = 0;
+			}
+		}
+		previousButton1State = button1State;
+
 		// count samples and trigger event
 
-		if (gSampleCount >= gEventIntervalMilliseconds * 0.001 * context->audioSampleRate)
+		if (gIsPlaying)
 		{
-			startNextEvent();
-			gSampleCount = 0;
-		}		
-		gSampleCount ++;
-
+			if (gSampleCount >= gEventIntervalMilliseconds * 0.001 * context->audioSampleRate)
+			{
+				startNextEvent();
+				gSampleCount = 0;
+			}		
+			gSampleCount ++;
+		}
 		// If drum triggered read through samples and add to output buffer
 		
 		for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
