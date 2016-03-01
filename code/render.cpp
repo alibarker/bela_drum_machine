@@ -21,7 +21,13 @@
 #include <cmath>
 #include "drums.h"
 
+/* Pin numbers */
 
+int buttonPin1 =  P8_07;
+
+/* Global State Variables */
+
+int previousButton1State = 0;
 
 /* Variables which are given to you: */
 
@@ -94,7 +100,7 @@ int gPreviousPattern = 0;
 
 bool setup(BeagleRTContext *context, void *userData)
 {
-	/* Step 2: initialise GPIO pins */
+	pinModeFrame(context, 0, buttonPin1, INPUT);
 	return true;
 }
 
@@ -105,9 +111,40 @@ bool setup(BeagleRTContext *context, void *userData)
 
 void render(BeagleRTContext *context, void *userData)
 {
-	/* TODO: your audio processing code goes here! */
-
 	/* Step 2: use gReadPointer to play a drum sound */
+
+	for (int n = 0; n < context->digitalFrames; n++)
+	{
+		float output = 0.0;
+		// Check button 1 state and trigger if just pressed.
+		int button1State = digitalReadFrame(context, n, buttonPin1);
+		if (button1State == 1 && previousButton1State == 0)
+		{
+			gTriggerButton1 = 1;
+			gReadPointer = 0;
+		}
+		previousButton1State = button1State;
+
+
+		// If drum triggered read through samples and add to output buffer
+		if (gTriggerButton1)
+		{
+			output += gDrumSampleBuffers[0][gReadPointer];
+			gReadPointer++;
+
+			if (gReadPointer >= gDrumSampleBufferLengths[0])
+			{
+				gReadPointer = 0;
+				gTriggerButton1 = 0;
+
+			}
+		}
+
+		// Write to output buffers
+		audioWriteFrame(context, n, 0, output);
+		audioWriteFrame(context, n, 1, output);
+
+	}
 
 	/* Step 3: use multiple read pointers to play multiple drums */
 
