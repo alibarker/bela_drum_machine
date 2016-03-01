@@ -26,8 +26,6 @@
 int buttonPin1 =  P8_07;
 int buttonPin2 =  P8_08;
 
-
-
 /* Global State Variables */
 
 int previousButton1State = 0;
@@ -110,6 +108,8 @@ int gPreviousPattern = 0;
 bool setup(BeagleRTContext *context, void *userData)
 {
 	pinModeFrame(context, 0, buttonPin1, INPUT);
+	pinModeFrame(context, 0, buttonPin2, INPUT);
+
 	return true;
 }
 
@@ -145,9 +145,9 @@ void render(BeagleRTContext *context, void *userData)
 		
 		for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
 		{
-			if (gReadPointers[i] != -1)
+			int buffer = gDrumBufferForReadPointer[i];
+			if (buffer != -1)
 			{
-				int buffer = gDrumBufferForReadPointer[i];
 				output += gDrumSampleBuffers[buffer][gReadPointers[i]];
 				gReadPointers[i]++;
 
@@ -181,7 +181,7 @@ void startPlayingDrum(int drumIndex) {
 
 	for (int i = 0; i < 16; i++)
 	{
-		if (gDrumBufferForReadPointer[i] != -1)
+		if (gDrumBufferForReadPointer[i] == -1)
 		{
 			gDrumBufferForReadPointer[i] = drumIndex;
 			gReadPointers[i] = 0;
