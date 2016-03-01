@@ -24,14 +24,15 @@
 /* Pin numbers */
 
 int buttonPin1 =  P8_07;
-int buttonPin2 =  P8_08;
 int potPin = 0;
+int ledPin = P8_08;
 
 /* Global State Variables */
 
 int previousButton1State = 0;
 int previousButton2State = 0;
 int gSampleCount = 0;
+int gLedState = 0;
 
 int gNumAudioFramesPerAnalog;
 
@@ -111,7 +112,7 @@ int gPreviousPattern = 0;
 bool setup(BeagleRTContext *context, void *userData)
 {
 	pinModeFrame(context, 0, buttonPin1, INPUT);
-	pinModeFrame(context, 0, buttonPin2, INPUT);
+	pinModeFrame(context, 0, ledPin, OUTPUT);
 
 	gNumAudioFramesPerAnalog = context->audioFrames / context->analogFrames;
 	for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
@@ -159,9 +160,19 @@ void render(BeagleRTContext *context, void *userData)
 			{
 				startNextEvent();
 				gSampleCount = 0;
+
+				if(gLedState == 0) {
+					gLedState = 1;
+				}
+				else {
+					gLedState = 0;
+				}
+
 			}		
 			gSampleCount ++;
 		}
+
+		digitalWriteFrame(context, n, ledPin, gLedState);
 
 		// If drum triggered read through samples and add to output buffer
 		
