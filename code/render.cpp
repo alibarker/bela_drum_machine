@@ -33,6 +33,8 @@ int previousButton1State = 0;
 int previousButton2State = 0;
 int gSampleCount = 0;
 
+int gNumAudioFramesPerAnalog;
+
 /* Variables which are given to you: */
 
 /* Drum samples are pre-loaded in these buffers. Length of each
@@ -111,6 +113,7 @@ bool setup(BeagleRTContext *context, void *userData)
 	pinModeFrame(context, 0, buttonPin1, INPUT);
 	pinModeFrame(context, 0, buttonPin2, INPUT);
 
+	gNumAudioFramesPerAnalog = context->audioFrames / context->analogFrames;
 	for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
 	{
 		gDrumBufferForReadPointer[i] = -1;
@@ -146,7 +149,9 @@ void render(BeagleRTContext *context, void *userData)
 		}
 		previousButton1State = button1State;
 
-		// count samples and trigger event
+		float gEventIntervalMilliseconds = map(analogReadFrame(context, n/gNumAudioFramesPerAnalog, potPin), 0, 0.829, 50, 1000);
+
+		// count samples and trigger event if running
 
 		if (gIsPlaying)
 		{
@@ -157,6 +162,7 @@ void render(BeagleRTContext *context, void *userData)
 			}		
 			gSampleCount ++;
 		}
+
 		// If drum triggered read through samples and add to output buffer
 		
 		for (int i = 0; i < NUMBER_OF_READPOINTERS; i++)
