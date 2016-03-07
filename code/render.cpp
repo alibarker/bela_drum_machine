@@ -101,6 +101,7 @@ int gIsPlaying = 0;			/* Whether we should play or not. Implement this in Step 4
  */
  int gCurrentPattern = 0;
  int gCurrentIndexInPattern = 0;
+ int gFillPattern = 5;
 
 /* Triggers from buttons (step 2 etc.). Read these here and
  * do something if they are nonzero (resetting them when done). */
@@ -152,7 +153,7 @@ int gIsPlaying = 0;			/* Whether we should play or not. Implement this in Step 4
 
 		rt_printf("B0: %f\tB1:%f\tB2: %f\tA1:%f\tA2: %f", gB0, gB1, gB2, gA1, gA2);
 		
-		gX1, gX2, gY1, gY2 = 0;
+		gX1 = gX2 = gY1 = gY2 = 0;
 	
 }
 
@@ -252,6 +253,8 @@ void render(BeagleRTContext *context, void *userData)
 
 		gStartup--;
 
+		gShouldPlayFill = 0;
+
 		rt_printf("Callibration: X: %f\tY: %f\tZ: %f\n", gXCalibrate, gYCalibrate, gZCalibrate);
 	} 
 
@@ -283,17 +286,6 @@ void render(BeagleRTContext *context, void *userData)
 		float y = analogReadFrame(context, n/gNumAudioFramesPerAnalog, yPin) - gYCalibrate;
 		float z = analogReadFrame(context, n/gNumAudioFramesPerAnalog, zPin) - gZCalibrate;
 
-		if (gCountForSensor == 128)
-		{
-			gCountForSensor = 0;
-
-			updateOrientation(x, y, z);
-
-			gCurrentPattern = gOrientation;
-			gCurrentIndexInPattern = gCurrentIndexInPattern % gPatternLengths[gCurrentPattern];
-			// rt_printf("X: %d\tY: %d\tZ: %d Pattern: %d\n", gXState, gYState, gZState, gCurrentPattern);
-
-		}
 		float accelerationMagnitude = sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
 
  			// Filter out gravity
@@ -307,10 +299,30 @@ void render(BeagleRTContext *context, void *userData)
 		gY1 = filteredAcceleration;
 
 
-		if (filteredAcceleration > 0.01 && gShouldPlayFill == 0) {
+		if (filteredAcceleration > 0.2 && gShouldPlayFill == 0) {
 			rt_printf("Filtered acceleration: %f\n", filteredAcceleration);
 			gShouldPlayFill = 1;
+			if (gCurrentPattern != gFillPattern)
+				gPreviousPattern = gCurrentPattern;
+			gCurrentIndexInPattern = 0;
 		}
+
+		if (gCountForSensor == 128)
+		{
+			gCountForSensor = 0;
+
+			updateOrientation(x, y, z);
+
+			if(gShouldPlayFill == 0) 
+				gCurrentPattern = gOrientation;
+			else if (gShouldPlayFill == 1)
+				gCurrentPattern = gFillPattern;
+			gCurrentIndexInPattern = gCurrentIndexInPattern % gPatternLengths[gCurrentPattern];
+			// rt_printf("X: %d\tY: %d\tZ: %d Pattern: %d\n", gXState, gYState, gZState, gCurrentPattern);
+
+		}
+		
+
 
 
 		// count samples and trigger event if running
@@ -403,7 +415,7 @@ void startNextEvent() {
 
 	int event = gPatterns[gCurrentPattern][gCurrentIndexInPattern];
 
- 	// rt_printf("Pattern: %d\t Index: %d\n", gCurrentPattern, gCurrentIndexInPattern);
+ 	rt_printf("Pattern: %d\t Index: %d\n", gCurrentPattern, gCurrentIndexInPattern);
 
 	for (int i = 0; i < NUMBER_OF_DRUMS; i++)
 	{
@@ -417,6 +429,11 @@ void startNextEvent() {
 	if (gCurrentIndexInPattern >= gPatternLengths[gCurrentPattern])
 	{
 		gCurrentIndexInPattern = 0;
+		if (gCurrentPattern == gFillPattern){
+			rt_printf("Reset\n");
+			gCurrentPattern = gPreviousPattern;
+			gShouldPlayFill = 0;
+		}
 	}
 }
 
